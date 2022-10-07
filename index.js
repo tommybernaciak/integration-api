@@ -3,6 +3,23 @@ const express = require("express");
 const cors = require("cors");
 const { v4: uuid } = require("uuid");
 
+const auth = async (req, res, next) => {
+  try {
+    const login = req.header("X-User-Name");
+    const token = req.header("X-User-Token");
+
+    const user = users.find((u) => u.token === token);
+    if (!user) {
+      throw new Error();
+    }
+    req.token = token;
+    req.user = login;
+    next();
+  } catch (e) {
+    res.status(401).send({ error: "Please login" });
+  }
+};
+
 const app = express();
 const corsOptions = {
   origin: "*",
@@ -10,7 +27,8 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-app.get("/users", async (req, res) => {
+//  ---------- API
+app.get("/users", auth, async (req, res) => {
   try {
     res.send(users);
   } catch (e) {
@@ -19,14 +37,20 @@ app.get("/users", async (req, res) => {
 });
 
 // GET ME
-app.get("/users/me", async (req, res) => {
-  res.send({
-    user: users[0],
-  });
+app.get("/users/me", auth, async (req, res) => {
+  try {
+    const user = users.find((u) => u.token === req.token);
+    if (!user) {
+      res.status(404).send();
+    }
+    res.send({ user });
+  } catch (e) {
+    res.status(500).send(e);
+  }
 });
 
 // GET PROJECTS
-app.get("/projects", async (req, res) => {
+app.get("/projects", auth, async (req, res) => {
   try {
     res.send(projects);
   } catch (e) {
@@ -35,7 +59,7 @@ app.get("/projects", async (req, res) => {
 });
 
 // CREATE
-app.post("/projects", express.json(), async (req, res) => {
+app.post("/projects", auth, express.json(), async (req, res) => {
   try {
     const project = projects.find((project) => project.id === req.body.id);
 
@@ -67,14 +91,41 @@ app.delete("/projects/:id", async (req, res) => {
   }
 });
 
+// LOGIN
+app.post("/users/login", express.json(), async (req, res) => {
+  try {
+    const { user, token } = req.body;
+    const currentUser = users.find((u) => u.token === req.body.token);
+
+    console.log(currentUser);
+
+    if (!currentUser) {
+      res.status(404).send();
+    }
+    res.send({ user: currentUser });
+  } catch (e) {
+    res.status(500).send(e);
+  }
+});
+
+// LOGOUT
+app.post("/users/logout", auth, async (req, res) => {
+  try {
+    console.log("logout");
+  } catch (e) {
+    res.status(500).send(e);
+  }
+});
+
 const PORT = process.env.PORT || 3030;
 app.listen(PORT, () => console.log(`api running... (${PORT})`));
 
+// ------ DATA
 const users = [
-  { id: 1, name: "Tommy", age: "31" },
-  { id: 2, name: "Mike", age: "27" },
-  { id: 3, name: "Donald", age: "73" },
-  { id: 4, name: "Bill", age: "64" },
+  { id: 1, name: "Tommy", age: "31", login: "tommy", token: "12341234tommy" },
+  { id: 2, name: "Mike", age: "27", login: "mike", token: "12341234mike" },
+  { id: 3, name: "John", age: "73", login: "john", token: "12341234john" },
+  { id: 4, name: "Bill", age: "64", login: "bill", token: "12341234bill" },
 ];
 
 let projects = [
