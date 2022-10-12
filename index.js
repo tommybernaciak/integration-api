@@ -59,7 +59,7 @@ app.get("/projects", auth, async (req, res) => {
 });
 
 // CREATE
-app.post("/projects", auth, express.json(), async (req, res) => {
+app.post("/projects", [auth, express.json()], async (req, res) => {
   try {
     const project = projects.find((project) => project.id === req.body.id);
 
@@ -68,15 +68,17 @@ app.post("/projects", auth, express.json(), async (req, res) => {
       res.status(404).send();
     }
     const newProject = req.body;
-    projects.push(newProject);
-    res.send({ project: newProject });
+    if (newProject) {
+      projects.push(newProject);
+      res.send({ project: newProject });
+    }
   } catch (e) {
     res.status(500).send(e);
   }
 });
 
 // DELETE
-app.delete("/projects/:id", async (req, res) => {
+app.delete("/projects/:id", auth, async (req, res) => {
   try {
     const project = projects.find(
       (project) => project.id === Number(req.params.id)
@@ -94,8 +96,8 @@ app.delete("/projects/:id", async (req, res) => {
 // LOGIN
 app.post("/users/login", express.json(), async (req, res) => {
   try {
-    const { user, token } = req.body;
-    const currentUser = users.find((u) => u.token === req.body.token);
+    const { token } = req.body;
+    const currentUser = users.find((u) => u.token === token);
 
     console.log(currentUser);
 
